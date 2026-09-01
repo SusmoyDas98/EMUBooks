@@ -80,8 +80,18 @@ PRINT_BYTE MACRO SOMETHING
 
 ENDM                                        
 
+                                
+ 
+; ---- FOR TAKING A LONG STRING AS INPUT ----
 
-                      
+INPUT_LONG_STRING MACRO  BUFFER 
+    LEA DX, BUFFER 
+    MOV AH, 10
+    INT 21H
+ENDM
+                           
+                           
+                           
 ; ---- FOR PRINTING ANYTHING OF WORD LENGTH ----
 
 PRINT_DIGIT MACRO SOMETHING 
@@ -125,9 +135,6 @@ ERROR_INPUT MACRO
 ENDM
                          
                          
- 
-LOGIN_BOX MACRO
-ENDM
 
 SIGNUP_BOX MACRO
 ENDM 
@@ -136,10 +143,7 @@ ENDM
    
 ; ---- LOGIN PAGE CREDENTIALS ----
 
-LOGIN_PAGE_CREDENTIALS MACRO           
-    
-    ;CMP LOGIN_SIGNUP_OPTIONS_APPEAR, 0      
-    ;JE SPECIFIC_OPITONS
+LOGIN_SIGNUP_PAGE_CREDENTIALS MACRO           
     
         NEW_LINE
         NEW_LINE
@@ -166,11 +170,11 @@ LOGIN_PAGE_CREDENTIALS MACRO
             JMP ERROR_CALL
 
             IS_1:
-            LOGIN_BOX  
+            CALL LOAD_LOGIN_BOX  
             JMP CHECKER_END
     
             IS_2:
-            SIGNUP_BOX     
+            CALL LOAD_SIGNUP_BOX     
             JMP CHECKER_END
             
             ERROR_CALL:
@@ -182,7 +186,48 @@ LOGIN_PAGE_CREDENTIALS MACRO
     
         CHECKER_END:
         ENDM
+                           
+                           
+                           
+; ---- LOGIN BOX CREDENTIALS ---- 
 
+LOGIN_BOX_CREDENTIALS MACRO              
+    NEW_LINE
+    NEW_LINE
+    
+    PRINT_STRING EMAIL              
+    INPUT_LONG_STRING EMAIL_BUFFER
+    NEW_LINE
+    NEW_LINE
+    
+    PRINT_STRING PASSWORD              
+    INPUT_LONG_STRING PASSWORD_BUFFER
+    NEW_LINE
+    NEW_LINE
+    
+    
+ 
+ENDM           
+
+
+
+; ---- SIGN UP BOX CREDENTIALS ---- 
+
+SIGNUP_BOX_CREDENTIALS MACRO              
+    NEW_LINE
+    NEW_LINE
+    
+    PRINT_STRING EMAIL              
+    INPUT_LONG_STRING EMAIL_BUFFER
+    NEW_LINE
+    NEW_LINE
+    
+    PRINT_STRING PASSWORD              
+    INPUT_LONG_STRING PASSWORD_BUFFER
+    NEW_LINE
+    NEW_LINE
+ 
+ENDM     
 
 .STACK 100H
 
@@ -206,12 +251,40 @@ RESTART DB " REFRESH THE SITE $"
 
 INVALID_INPUT DB "  INVALID INPUT  $"        
 
-; ---- LOGIN PAGE CREDENTIALS ----
+; ---- LOGIN SIGNUP PAGE VARIABLES ----
 
-LOGIN_PAGE_TITLE DB "LOGIN OR SIGN UP $"                     
+LOGIN_SIGNUP_PAGE_TITLE DB "LOGIN OR SIGN UP $"                     
 LOGIN_NOTICE DB ">>>>    PRESS 1 TO LOGIN $"
 SIGNUP_NOTICE DB ">>>>    PRESS 2 TO SIGN UP $"     
-LOGIN_SIGNUP_OPTIONS_APPEAR DB ?
+LOGIN_SIGNUP_OPTIONS_APPEAR DB ?                     
+LOGIN_PAGE_TITLE DB " LOG  IN $"
+SIGNUP_PAGE_TITLE DB " SIGN UP $"          
+
+
+; ---- LOGIN, SIGNUP BOX VARIABLES ----                          
+
+
+EMAIL DB ">>>> EMAIL (Max 100 Characters Allowed) : $ "
+EMAIL_MAX_ALLOWED_SIZE DB 100 
+
+EMAIL_BUFFER DB 100 
+             DB ? 
+             DB 101 DUP(?)
+
+PASSWORD DB ">>>> PASSWORD (Max 100 Characters Allowed) : $ "
+PASSWORD_MAX_ALLOWED_SIZE DB 100                                 
+             
+PASSWORD_BUFFER DB 100 
+                DB ? 
+                DB 101 DUP(?)
+                                                 
+
+; ---- STORAGES ----
+TOTAL_USERS DB 0
+EMAIL_STORAGE DB 100 DUP(100 DUP(?))
+PASSWORD_STORAGE DB 100 DUP(100 DUP(?))
+
+
 
 .CODE
 MAIN PROC
@@ -244,16 +317,40 @@ PAGE_LOADER PROC
     CMP LOGGED_IN, AL
     JE WEBSITE               
     MOV LOGIN_SIGNUP_OPTIONS_APPEAR, AL
-    CALL LOAD_LOGIN_PAGE 
+    CALL LOAD_LOGIN_SIGNUP_PAGE 
 
     WEBSITE:
 RET
 PAGE_LOADER ENDP
 
-LOAD_LOGIN_PAGE PROC
-    PAGE_TITLE LOGIN_PAGE_TITLE       
-    LOGIN_PAGE_CREDENTIALS     
+LOAD_LOGIN_SIGNUP_PAGE PROC
+    PAGE_TITLE LOGIN_SIGNUP_PAGE_TITLE       
+    LOGIN_SIGNUP_PAGE_CREDENTIALS     
     ;CLEAR_SCREEN
     RET
-LOAD_LOGIN_PAGE ENDP
+LOAD_LOGIN_SIGNUP_PAGE ENDP  
+
+
+ 
+LOAD_LOGIN_BOX PROC
+    CLEAR_SCREEN   
+    
+    ;LEA SI, 
+    PAGE_TITLE LOGIN_PAGE_TITLE               
+    LOGIN_BOX_CREDENTIALS
+    RET
+LOAD_LOGIN_BOX ENDP   
+
+
+
+LOAD_SIGNUP_BOX PROC
+    CLEAR_SCREEN   
+    
+    ;LEA SI, 
+    PAGE_TITLE SIGNUP_PAGE_TITLE               
+    SIGNUP_BOX_CREDENTIALS
+    RET
+LOAD_SIGNUP_BOX ENDP
+
+
     END MAIN
