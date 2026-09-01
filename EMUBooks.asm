@@ -250,18 +250,34 @@ LOGIN_BOX_CREDENTIALS MACRO
        INPT_1:            
         CALL CHECK_LOGIN_USER
         CMP USER_FOUND, 1
-        JE LOGIN_SUCCESSFUL
+        JE LOGIN_SUCCESSFUL     
         
+        
+        NEW_LINE    
         NEW_LINE
-        PRINT_STRING LOGIN_FAILED
+        PRINT_STRING SPACED_DASHES
+        NEW_LINE 
+        PRINT_STRING LOGIN_FAILED 
+        NEW_LINE 
+        PRINT_STRING SPACED_DASHES
         NEW_LINE
+        NEW_LINE              
+        
+         PRINT_STRING RESTART  
+         JMP LOGIN_BOX_END
         
         DEC BX
         JMP LOGIN_INPUT_LOOP_BEGIN
         
         LOGIN_SUCCESSFUL:
+            NEW_LINE                
+            NEW_LINE   
+            PRINT_STRING SPACED_DASHES  
+            NEW_LINE          
+            PRINT_STRING LOGIN_SUCCESS    
+            NEW_LINE 
+            PRINT_STRING SPACED_DASHES 
             NEW_LINE
-            PRINT_STRING LOGIN_SUCCESS
             NEW_LINE
             MOV LOGGED_IN, 1
             JMP LOGIN_BOX_END
@@ -353,9 +369,17 @@ SIGNUP_BOX_CREDENTIALS MACRO
         INPUT_1:
         MOV AH , 2                 
         CALL STORE_SIGNUP_USER
-        
+        NEW_LINE
         NEW_LINE 
-        PRINT_STRING SIGNUP_SUCCESS    
+        PRINT_STRING SPACED_DASHES    
+            NEW_LINE 
+    
+        PRINT_STRING SIGNUP_SUCCESS
+        NEW_LINE 
+        PRINT_STRING SPACED_DASHES 
+        NEW_LINE
+        NEW_LINE
+            
         MOV SIGN_UP_DONE, 1
         NEW_LINE
         
@@ -407,7 +431,7 @@ GIVE_INPUT_NO_BRACKS DB " GIVE  INPUT : $"
 
 SPACES DB "          $"              
 GIVE_INPUT DB " GIVE INPUT ($"            
-MAX_ALLOWED_ATTEMPT DB " ATTEMPTS REMAINING TILL SITE GETS LOCKED): $"     
+MAX_ALLOWED_ATTEMPT DB " ATTEMPTS REMAINING TO PRESS RIGHT KEY ): $"     
 
 RESTART DB " REFRESH THE SITE $"
 
