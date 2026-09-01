@@ -10,13 +10,32 @@ PRINT_STRING MACRO STRING
     INT 21H
 ENDM
                                      
-                            
+                               
+ 
+; ---- CLEARING THE ENTIRE SCREEN ----
+
+CLEAR_SCREEN MACRO
+    MOV AH, 6
+    MOV AL, 0
+    MOV BH, 7
+    MOV CX, 0
+    MOV DX, 6223
+    INT 10H
+    
+    MOV AH, 2
+    MOV BH, 0
+    MOV DH, 0
+    MOV DL, 0
+    INT 10H
+    
+ENDM
+    
 
 ; ---- FOR PRINTING ANY PAGE TITLE ----
 
 PAGE_TITLE MACRO TITLE
                  
-    PRINT_STRING BARS    
+    PRINT_STRING TITLE_BARS    
     
     NEW_LINE
                     
@@ -26,7 +45,7 @@ PAGE_TITLE MACRO TITLE
     
     NEW_LINE
     
-    PRINT_STRING BARS       
+    PRINT_STRING TITLE_BARS       
     
     NEW_LINE
 
@@ -59,30 +78,68 @@ PRINT_BYTE MACRO SOMETHING
     MOV DL, SOMETHING 
     INT 21H
 
+ENDM                                        
+
+
+                      
+; ---- FOR PRINTING ANYTHING OF WORD LENGTH ----
+
+PRINT_DIGIT MACRO SOMETHING 
+    
+    MOV AX, SOMETHING
+    ADD AL, 48
+    MOV DL, AL 
+    MOV AH, 2
+    INT 21H
+
 ENDM
                                     
                                     
                                     
 ; ----INPUT AN INT VAL ----
 
-INPUT_INT MACRO 
+INPUT_INT MACRO  
+        ;MOV DL, VAL
         MOV AH, 1
         INT 21H
 ENDM
 
+            
+            
+; ---- ERROR_INPUT (ALSO TAKES ANOTHER INPUT) ----
 
-
-LOGIN_SIGNUP_CHECKER MACRO VAL
-    MOV BL, VAL
+ERROR_INPUT MACRO    
+    NEW_LINE
+    PRINT_STRING SPACED_DASHES     
+    
+    NEW_LINE
+    PRINT_STRING SPACES
+    PRINT_STRING END_MARK       
+    PRINT_STRING INVALID_INPUT
+    PRINT_STRING END_MARK 
+    NEW_LINE                           
+                          
+    PRINT_STRING SPACED_DASHES        
+    NEW_LINE         
+ 
 ENDM
+                         
+                         
+ 
+LOGIN_BOX MACRO
+ENDM
+
+SIGNUP_BOX MACRO
+ENDM 
+
    
    
 ; ---- LOGIN PAGE CREDENTIALS ----
 
 LOGIN_PAGE_CREDENTIALS MACRO           
     
-    CMP LOGIN_SIGNUP_OPTIONS_APPEAR, 0      
-    JE SPECIFIC_OPITONS
+    ;CMP LOGIN_SIGNUP_OPTIONS_APPEAR, 0      
+    ;JE SPECIFIC_OPITONS
     
         NEW_LINE
         NEW_LINE
@@ -92,18 +149,39 @@ LOGIN_PAGE_CREDENTIALS MACRO
         PRINT_STRING SIGNUP_NOTICE
         NEW_LINE
         NEW_LINE             
-        NEW_LINE
-        PRINT_STRING    YOUR_INPUT                
-        INPUT_INT
-        LOGIN_SIGNUP_CHECKER AL
+        NEW_LINE    
+        
+        MOV CX, 5
+        INPUT_LOP_BEGIN:
+            PRINT_STRING    GIVE_INPUT
+            PRINT_DIGIT CX                
+            PRINT_STRING  MAX_ALLOWED_ATTEMPT
+            INPUT_INT                  
+            SUB AL, 48
+            CMP AL, 1
+            JE IS_1
+            CMP AL, 2
+            JE IS_2
+            
+            JMP ERROR_CALL
+
+            IS_1:
+            LOGIN_BOX  
+            JMP CHECKER_END
     
-    SPECIFIC_OPITONS:    
-       ; CMP LOGIN_OPTION_ONLY,
-;        CMP SIGNUP_OPTION_ONLY
+            IS_2:
+            SIGNUP_BOX     
+            JMP CHECKER_END
+            
+            ERROR_CALL:
+                ERROR_INPUT  
+        
+        LOOP   INPUT_LOP_BEGIN       
+        PRINT_STRING RESTART
         
     
-    
-ENDM
+        CHECKER_END:
+        ENDM
 
 
 .STACK 100H
@@ -116,9 +194,17 @@ FALSE DB 0
 TRUE DB 1        
 LOGGED_IN DB 0                         
 
-BARS DB "========================================$"            
+TITLE_BARS DB "========================================$"            
+SPACED_DASHES DB "- - - - - - - - - - - - - - - - - - - - -$"
+END_MARK DB "|$"
+
 SPACES DB "          $"              
-YOUR_INPUT DB "GIVE INPUT: $"
+GIVE_INPUT DB " GIVE INPUT ($"            
+MAX_ALLOWED_ATTEMPT DB " ATTEMPTS REMAINING): $"     
+
+RESTART DB " REFRESH THE SITE $"
+
+INVALID_INPUT DB "  INVALID INPUT  $"        
 
 ; ---- LOGIN PAGE CREDENTIALS ----
 
@@ -166,7 +252,8 @@ PAGE_LOADER ENDP
 
 LOAD_LOGIN_PAGE PROC
     PAGE_TITLE LOGIN_PAGE_TITLE       
-    LOGIN_PAGE_CREDENTIALS
+    LOGIN_PAGE_CREDENTIALS     
+    ;CLEAR_SCREEN
     RET
 LOAD_LOGIN_PAGE ENDP
     END MAIN
