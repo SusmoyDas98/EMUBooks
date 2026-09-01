@@ -134,12 +134,7 @@ ERROR_INPUT MACRO
  
 ENDM
                          
-                         
-
-SIGNUP_BOX MACRO
-ENDM 
-
-   
+                        
    
 ; ---- LOGIN PAGE CREDENTIALS ----
 
@@ -156,7 +151,7 @@ LOGIN_SIGNUP_PAGE_CREDENTIALS MACRO
         NEW_LINE    
         
         MOV CX, 5
-        INPUT_LOP_BEGIN:
+        INPUT_LOOP_BEGIN:
             PRINT_STRING    GIVE_INPUT
             PRINT_DIGIT CX                
             PRINT_STRING  MAX_ALLOWED_ATTEMPT
@@ -169,24 +164,28 @@ LOGIN_SIGNUP_PAGE_CREDENTIALS MACRO
             
             JMP ERROR_CALL
 
-            IS_1:
+            IS_1:              
+            MOV CX, 0
             CALL LOAD_LOGIN_BOX  
             JMP CHECKER_END
     
-            IS_2:
+            IS_2:    
+            MOV CX, 0
             CALL LOAD_SIGNUP_BOX     
             JMP CHECKER_END
             
             ERROR_CALL:
                 ERROR_INPUT  
         
-        LOOP   INPUT_LOP_BEGIN       
-        PRINT_STRING RESTART
+        LOOP   INPUT_LOOP_BEGIN       
+        PRINT_STRING RESTART   
+        
         
     
-        CHECKER_END:
+        CHECKER_END:   
+        MOV CX, 0
         ENDM
-                           
+                                              
                            
                            
 ; ---- LOGIN BOX CREDENTIALS ---- 
@@ -205,8 +204,62 @@ LOGIN_BOX_CREDENTIALS MACRO
     NEW_LINE
     NEW_LINE
     
+    PRINT_STRING SPACED_DASHES
+    NEW_LINE
+    NEW_LINE
     
+    PRINT_STRING COFIRM_BUTTON
+    NEW_LINE 
+    NEW_LINE 
+    
+    PRINT_STRING  GO_BACK_BUTTON
+    NEW_LINE 
+    NEW_LINE
+                        
+     PRINT_STRING SPACED_DASHES
+    NEW_LINE
+    NEW_LINE
+    
+    MOV BX , ITERATOR
+    LOGIN_INPUT_LOOP_BEGIN:
+        CMP BX, 0
+        JE   LOGIN_LIMIT_FINISHED           
+        PRINT_STRING GIVE_INPUT 
+        PRINT_DIGIT BX
+        PRINT_STRING MAX_ALLOWED_ATTEMPT
+        INPUT_INT 
+        SUB AL, 48
+        CMP AL, 0
+        JE  INPT_0
+        CMP AL, 1
+        JE INPT_1
+        
+        JMP LOGIN_ERROR_CALL
+        
+        INPT_0:
+         ;CALL LOAD_LOGIN_SIGNUP_PAGE 
+        JMP ROOT_PAGE     
+        
+        
+        INPT_1:
+        MOV AH , 2
+        
+        DEC BX           
+        JMP LOGIN_INPUT_LOOP_BEGIN
+        ;JMP LOGIN_BOX_END
+        
+        LOGIN_ERROR_CALL:
+            ERROR_INPUT          
+            DEC BX
+            JMP LOGIN_INPUT_LOOP_BEGIN
  
+
+        LOGIN_LIMIT_FINISHED:
+        PRINT_STRING RESTART   
+         ;CALL LOAD_LOGIN_SIGNUP_PAGE  
+    
+        LOGIN_BOX_END:       
+        
 ENDM           
 
 
@@ -225,7 +278,62 @@ SIGNUP_BOX_CREDENTIALS MACRO
     PRINT_STRING PASSWORD              
     INPUT_LONG_STRING PASSWORD_BUFFER
     NEW_LINE
+    NEW_LINE     
+    
+    PRINT_STRING COFIRM_BUTTON
+    NEW_LINE 
+    NEW_LINE 
+    
+    PRINT_STRING  GO_BACK_BUTTON
+    NEW_LINE 
+    NEW_LINE            
+    
+     PRINT_STRING SPACED_DASHES
     NEW_LINE
+    NEW_LINE
+    
+    MOV BX , ITERATOR
+    SIGNUP_INPUT_LOOP_BEGIN:
+        CMP BX, 0
+        JE   SIGNUP_LIMIT_FINISHED           
+        PRINT_STRING GIVE_INPUT 
+        PRINT_DIGIT BX
+        PRINT_STRING MAX_ALLOWED_ATTEMPT
+        INPUT_INT 
+        SUB AL, 48
+        CMP AL, 0
+        JE  INPUT_0
+        CMP AL, 1
+        JE INPUT_1
+        
+        JMP SIGNUP_ERROR_CALL
+        
+        INPUT_0:
+         ;CALL LOAD_LOGIN_SIGNUP_PAGE 
+        JMP ROOT_PAGE     
+        
+        
+        INPUT_1:
+        MOV AH , 2
+        
+        DEC BX           
+        JMP SIGNUP_INPUT_LOOP_BEGIN
+        ;JMP LOGIN_BOX_END
+        
+        SIGNUP_ERROR_CALL:
+            ERROR_INPUT          
+            DEC BX
+            JMP SIGNUP_INPUT_LOOP_BEGIN
+ 
+
+        SIGNUP_LIMIT_FINISHED:
+        PRINT_STRING RESTART   
+         ;CALL LOAD_LOGIN_SIGNUP_PAGE  
+    
+        SIGNUP_BOX_END:       
+        
+ENDM           
+    
  
 ENDM     
 
@@ -237,7 +345,8 @@ ENDM
   
 FALSE DB 0
 TRUE DB 1        
-LOGGED_IN DB 0                         
+LOGGED_IN DB 0              
+           
 
 TITLE_BARS DB "========================================$"            
 SPACED_DASHES DB "- - - - - - - - - - - - - - - - - - - - -$"
@@ -245,11 +354,13 @@ END_MARK DB "|$"
 
 SPACES DB "          $"              
 GIVE_INPUT DB " GIVE INPUT ($"            
-MAX_ALLOWED_ATTEMPT DB " ATTEMPTS REMAINING): $"     
+MAX_ALLOWED_ATTEMPT DB " ATTEMPTS REMAINING TILL SITE GETS LOCKED): $"     
 
 RESTART DB " REFRESH THE SITE $"
 
-INVALID_INPUT DB "  INVALID INPUT  $"        
+INVALID_INPUT DB "  INVALID INPUT  $"      
+
+ITERATOR DW 5  
 
 ; ---- LOGIN SIGNUP PAGE VARIABLES ----
 
@@ -276,7 +387,11 @@ PASSWORD_MAX_ALLOWED_SIZE DB 100
              
 PASSWORD_BUFFER DB 100 
                 DB ? 
-                DB 101 DUP(?)
+                DB 101 DUP(?)                  
+                
+COFIRM_BUTTON DB ">>>> PRESS 1 TO CONFIRM $"
+GO_BACK_BUTTON DB ">>>> PRESS 0 TO CANCEL AND GO BACK $"
+
                                                  
 
 ; ---- STORAGES ----
@@ -294,7 +409,8 @@ MAIN PROC
 MOV AX,@DATA
 MOV DS,AX
  
-; enter your code here
+; enter your code here   
+ROOT_PAGE:
 CALL PAGE_LOADER
 
 
@@ -324,6 +440,7 @@ RET
 PAGE_LOADER ENDP
 
 LOAD_LOGIN_SIGNUP_PAGE PROC
+    CLEAR_SCREEN
     PAGE_TITLE LOGIN_SIGNUP_PAGE_TITLE       
     LOGIN_SIGNUP_PAGE_CREDENTIALS     
     ;CLEAR_SCREEN
