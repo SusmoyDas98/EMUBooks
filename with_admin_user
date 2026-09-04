@@ -108,7 +108,7 @@ ENDM
 
 ; declare variables here
 
-;default string style from Susmoy bhai
+;default string style from Sushmoy bhai
 
 TITLE_BARS      DB "========================================$"
 SPACED_DASHES   DB "- - - - - - - - - - - - - - - - - - - - -$"
@@ -119,19 +119,19 @@ GIVE_INPUT_NO_BRACKS DB " GIVE INPUT : $"
 CONTINUE_MSG    DB " PRESS ANY KEY TO CONTINUE $" 
 
 books_total equ 8
-name_width equ 31
 ; equ meaning has no fixed data type can be 8/16 at a time
 
-;len(name) + padding + 1 ('$') = 31, i.e. padding = 30 - len(name)
-book_names db "Harry Potter", 18 dup(' '), '$'
-           db "Khoabnama", 21 dup(' '), '$'
-           db "Lalshalu", 22 dup(' '), '$'
-           db "The Brief History of Time", 5 dup(' '), '$'
-           db "Deyal", 25 dup(' '), '$'
-           db "Pather Panchali", 15 dup(' '), '$'
-           db "Sapiens", 23 dup(' '), '$'
-           db "Ekattorer Dinguli", 13 dup(' '), '$'
-           
+book_name_0 db "Harry Potter$"
+book_name_1 db "Khoabnama$"
+book_name_2 db "Lalshalu$"
+book_name_3 db "The Brief History of Time$"
+book_name_4 db "Deyal$"
+book_name_5 db "Pather Panchali$"
+book_name_6 db "Sapiens$"
+book_name_7 db "Ekattorer Dinguli$"
+
+book_names dw offset book_name_0, offset book_name_1, offset book_name_2, offset book_name_3, offset book_name_4, offset book_name_5, offset book_name_6, offset book_name_7
+
 book_stock dw 0, 3, 2, 1, 0, 5, 7, 4
 
 book_requests dw 8 dup(0)
@@ -151,7 +151,7 @@ most_req_count dw 0
                   
 ;Selection Text
 LOGIN_TITLE           DB "DIGITAL LIBRARY - LOGIN $"
-LOGIN_MENU_ADMIN      DB "  PRESS 1  TO LOGIN AS OWNER $"
+LOGIN_MENU_ADMIN      DB "  PRESS 1  TO LOGIN AS OWNER (ADMIN) $"
 LOGIN_MENU_USER       DB "  PRESS 2  TO LOGIN AS USER $"
 LOGIN_MENU_EXIT       DB "  PRESS 0  TO EXIT $"
 MAIN_MENU_TITLE       DB "DIGITAL LIBRARY - MAIN MENU $"
@@ -164,10 +164,10 @@ ANALYTICS_TITLE       DB "SHOP ANALYTICS $"
 ; ---- MAIN MENU OPTIONS ----
 
 MENU_1 DB "  PRESS 1  TO VIEW BOOK STOCK $"
-MENU_2 DB "  PRESS 2  TO UPDATE STOCK $"  ;OWNER
-MENU_3 DB "  PRESS 3  TO REQUEST AN OUT OF STOCK BOOK $"  ;USER
-MENU_4 DB "  PRESS 4  TO HANDLE OUT OF STOCK REQUESTS $"  ;OWNER
-MENU_5 DB "  PRESS 5  TO VIEW SHOP ANALYTICS $"  ;OWNER
+MENU_2 DB "  PRESS 2  TO UPDATE STOCK (OWNER) $"
+MENU_3 DB "  PRESS 3  TO REQUEST AN OUT OF STOCK BOOK (USER) $"
+MENU_4 DB "  PRESS 4  TO HANDLE OUT OF STOCK REQUESTS (OWNER) $"
+MENU_5 DB "  PRESS 5  TO VIEW SHOP ANALYTICS (OWNER) $"
 MENU_0 DB "  PRESS 0  TO LOGOUT $"
 
 ; ---- SHARED PROMPTS / LABELS ----
@@ -408,14 +408,11 @@ print_book_entry proc
     call print_num
     print_string dot_space
     
-    mov ax, bx
-    mov cx, name_width
-    mul cx
-    mov di, ax
-    print_string book_names[di]
-    
     mov si, bx
     add si, si
+    mov dx, book_names[si]
+    mov ah, 9
+    int 21h
     
     print_string stock_label
     mov ax, book_stock[si]
@@ -790,11 +787,11 @@ shop_analytics proc
     analytics_show_most:
         mov bl, most_req_idx
         mov bh, 0
-        mov ax, BX
-        mov cx, name_width
-        mul cx
-        mov di, ax
-        print_string book_names[di]
+        mov si, bx
+        add si, si
+        mov dx, book_names[si]
+        mov ah, 9
+        int 21h
         print_string requested_times_prefix
         mov ax, most_req_count
         call print_num
