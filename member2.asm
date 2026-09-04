@@ -1,0 +1,793 @@
+.MODEL SMALL 
+
+pause_continue macro
+    gap
+    print_string continue_msg
+    input_int
+    gap
+    
+endm
+
+; --- FOR PRINTING A STRING --- lagbe na
+
+PRINT_STRING MACRO STRING
+    MOV AH, 9
+    LEA DX, STRING
+    INT 21H
+ENDM
+
+
+; ---- CLEARING THE ENTIRE SCREEN ---- lagbe na
+
+CLEAR_SCREEN MACRO
+    MOV AH, 6
+    MOV AL, 0
+    MOV BH, 7
+    MOV CX, 0
+    MOV DX, 6223
+    INT 10H
+
+    MOV AH, 2
+    MOV BH, 0
+    MOV DH, 0
+    MOV DL, 0
+    INT 10H
+ENDM
+
+
+; ---- FOR PRINTING ANY PAGE TITLE ----  lagbe na
+
+PAGE_TITLE MACRO TITLE
+    PRINT_STRING TITLE_BARS
+    GAP
+    PRINT_STRING SPACES
+    PRINT_STRING TITLE
+    GAP
+    PRINT_STRING TITLE_BARS
+    GAP
+ENDM
+
+
+; ---- JUMPING TO A NEW LINE ---- lagbe na(NEW_LINE)
+
+GAP MACRO
+    MOV AH, 2
+    MOV DL, 10
+    INT 21H
+
+    MOV AH, 2
+    MOV DL, 13
+    INT 21H
+ENDM
+
+
+; ---- FOR PRINTING ANYTHING OF BYTE LENGTH (SINGLE CHARACTER) ---- lagbe na
+
+PRINT_BYTE MACRO SOMETHING
+    MOV AH, 2
+    MOV DL, SOMETHING
+    INT 21H
+ENDM
+
+
+; ---- FOR TAKING A LONG STRING AS INPUT ---- lagbe na
+
+INPUT_LONG_STRING MACRO BUFFER
+    LEA DX, BUFFER
+    MOV AH, 10
+    INT 21H
+ENDM
+
+
+; ---- INPUT AN INT VAL (SINGLE KEY, ECHOED) ---- lagbe na
+
+INPUT_INT MACRO
+    MOV AH, 1
+    INT 21H
+ENDM
+
+
+; ---- ERROR_INPUT (SIMPLE INVALID-INPUT NOTICE) ---- lagbe na
+
+ERROR_INPUT MACRO
+    GAP
+    PRINT_STRING SPACED_DASHES
+    GAP
+    PRINT_STRING SPACES
+    PRINT_STRING END_MARK
+    PRINT_STRING INVALID_INPUT
+    PRINT_STRING END_MARK
+    GAP
+    PRINT_STRING SPACED_DASHES
+    GAP
+ENDM
+ 
+.STACK 100H
+
+.DATA
+
+; declare variables here
+
+;default string style from Sushmoy bhai
+
+TITLE_BARS      DB "========================================$"
+SPACED_DASHES   DB "- - - - - - - - - - - - - - - - - - - - -$"
+END_MARK        DB "|$"
+SPACES          DB "          $"
+INVALID_INPUT   DB "  INVALID INPUT  $"
+GIVE_INPUT_NO_BRACKS DB " GIVE INPUT : $"
+CONTINUE_MSG    DB " PRESS ANY KEY TO CONTINUE $" 
+
+books_total equ 8
+name_width equ 31
+; equ meaning has no fixed data type can be 8/16 at a time
+
+
+;len(name) + padding + 1 ('$') = 31, i.e. padding = 30 - len(name)
+book_names db "Harry Potter", 18 dup(' '), '$'
+           db "Khoabnama", 21 dup(' '), '$'
+           db "Lalshalu", 22 dup(' '), '$'
+           db "The Brief History of Time", 5 dup(' '), '$'
+           db "Deyal", 25 dup(' '), '$'
+           db "Pather Panchali", 15 dup(' '), '$'
+           db "Sapiens", 23 dup(' '), '$'
+           db "Ekattorer Dinguli", 13 dup(' '), '$'
+           
+book_stock dw 0, 3, 2, 1, 0, 5, 7, 4
+
+book_requests dw 8 dup(0)
+total_requests_handled dw 0
+
+any_out_of_stock db 0
+any_pending db 0
+
+;analytics er part
+total_stock_qty dw 0
+out_of_stock_count dw 0
+pending_req_total dw 0
+most_req_idx db 0
+most_req_count dw 0
+                  
+;quatity
+quantity_buffer db 4 
+                db ?
+                db 4 dup (?)
+
+;Selection Text
+MAIN_MENU_TITLE       DB "DIGITAL LIBRARY - MAIN MENU $"
+STOCK_LIST_TITLE      DB "CURRENT BOOK STOCK $"
+UPDATE_STOCK_TITLE    DB "UPDATE STOCK $"
+REQUEST_TITLE         DB "REQUEST AN OUT OF STOCK BOOK $"
+HANDLE_REQUEST_TITLE  DB "HANDLE OUT OF STOCK REQUESTS $"
+ANALYTICS_TITLE       DB "SHOP ANALYTICS $"
+
+; ---- MAIN MENU OPTIONS ----
+
+MENU_1 DB "  PRESS 1  TO VIEW BOOK STOCK $"
+MENU_2 DB "  PRESS 2  TO UPDATE STOCK (OWNER) $"
+MENU_3 DB "  PRESS 3  TO REQUEST AN OUT OF STOCK BOOK (USER) $"
+MENU_4 DB "  PRESS 4  TO HANDLE OUT OF STOCK REQUESTS (OWNER) $"
+MENU_5 DB "  PRESS 5  TO VIEW SHOP ANALYTICS (OWNER) $"
+MENU_0 DB "  PRESS 0  TO EXIT $"
+
+; ---- SHARED PROMPTS / LABELS ----
+
+SELECT_BOOK_PROMPT DB ">>>> ENTER BOOK NUMBER (0 TO GO BACK) : $"
+ENTER_QTY_ADD       DB ">>>> ENTER QUANTITY TO ADD TO STOCK : $"
+DOT_SPACE           DB ". $"
+STOCK_LABEL         DB "   |   STOCK: $"
+OUT_OF_STOCK_LABEL  DB "  <OUT OF STOCK> $"
+PENDING_LABEL       DB "   |   PENDING REQUESTS: $"
+
+; ---- STATUS MESSAGES ----
+
+STOCK_UPDATED_MSG      DB " STOCK UPDATED SUCCESSFULLY $"
+RESTOCK_NOTICE_1       DB " NOTE: $"
+RESTOCK_NOTICE_2       DB " USER(S) WERE WAITING FOR THIS BOOK AND WILL NOW BE NOTIFIED $"
+REQUEST_CONFIRM_MSG    DB " YOUR REQUEST HAS BEEN RECORDED. YOU WILL BE NOTIFIED ON RESTOCK $"
+REQUEST_FULFILLED_MSG  DB " BOOK RESTOCKED. PENDING REQUESTS FOR THIS BOOK HAVE BEEN CLEARED $"
+NO_OUT_OF_STOCK_MSG    DB " ALL BOOKS ARE CURRENTLY IN STOCK. NOTHING TO REQUEST $"
+NO_PENDING_MSG         DB " THERE ARE NO PENDING OUT-OF-STOCK REQUESTS RIGHT NOW $"
+
+; ---- ANALYTICS LABELS ----
+
+TOTAL_TITLES_LABEL        DB " TOTAL BOOK TITLES : $"
+TOTAL_STOCK_LABEL         DB " TOTAL STOCK QUANTITY (ALL BOOKS) : $"
+OUT_OF_STOCK_COUNT_LABEL  DB " BOOKS CURRENTLY OUT OF STOCK : $"
+PENDING_TOTAL_LABEL       DB " TOTAL PENDING OUT-OF-STOCK REQUESTS : $"
+HANDLED_TOTAL_LABEL       DB " TOTAL REQUESTS FULFILLED (ALL TIME) : $"
+MOST_REQUESTED_LABEL      DB " MOST REQUESTED OUT-OF-STOCK BOOK : $"
+NONE_LABEL                DB "NONE $"
+REQUESTED_TIMES_PREFIX    DB "  (REQUESTED $"
+REQUESTED_TIMES_SUFFIX    DB " TIME(S)) $"                
+
+.CODE
+MAIN PROC
+
+; initialize DS
+
+MOV AX,@DATA
+MOV DS,AX
+ 
+; enter your code here
+
+main_menu_loop:
+    clear_screen
+    page_title main_menu_title
+    gap
+    
+    print_string menu_1
+    gap
+    print_string menu_2
+    gap
+    print_string menu_3
+    gap
+    print_string menu_4
+    gap
+    print_string menu_5
+    gap
+    print_string menu_0
+    gap
+    gap 
+    
+    print_string GIVE_INPUT_NO_BRACKS
+    input_int
+    sub al, 30H
+    
+    cmp al, 1
+    JE main_opt_view
+    cmp al, 2
+    JE main_opt_update
+    cmp al, 3
+    JE main_opt_request
+    cmp al, 4
+    JE main_opt_handle
+    cmp al, 5
+    JE main_opt_analytics
+    cmp al, 0
+    JE main_exit
+    
+    ERROR_INPUT
+    jmp main_menu_loop
+    
+    main_opt_view:
+        clear_screen
+        page_title stock_list_title
+        gap
+        call list_all_books
+        pause_continue
+        jmp main_menu_loop
+        
+    main_opt_update:
+        call update_stock_menu
+        pause_continue
+        jmp main_menu_loop
+        
+    main_opt_request:
+        call request_out_of_stock_menu
+        pause_continue
+        jmp main_menu_loop
+        
+    main_opt_handle:
+        call handle_requests_menu
+        pause_continue
+        jmp main_menu_loop
+        
+    main_opt_analytics:
+        call shop_analytics
+        pause_continue
+        jmp main_menu_loop                    
+
+MAIN_EXIT: 
+
+;exit to DOS
+               
+MOV AX,4C00H
+INT 21H
+
+MAIN ENDP 
+
+; ===================================
+PRINT_NUM PROC
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    MOV BX, 10
+    MOV CX, 0
+    
+    PN_DIVIDE:
+    MOV DX, 0
+    DIV BX
+    PUSH DX
+    INC CX
+    CMP AX, 0
+    JNZ PN_DIVIDE
+    
+    PN_PRINT:
+    POP DX
+    ADD DL, 30H
+    MOV AH, 2
+    INT 21H
+    LOOP PN_PRINT
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    RET
+    PRINT_NUM ENDP 
+
+; ===================================
+str_to_num proc
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    
+    mov ax, 0
+    lea si, quantity_buffer
+    mov cl, [si+1]
+    mov ch, 0
+    cmp cx, 0
+    je str_to_num_done
+    
+    lea si, quantity_buffer
+    inc si
+    inc si
+    
+    str_to_num_loop:
+        cmp cx, 0
+        JE str_to_num_done
+        
+        mov dl, [si]
+        cmp dl, '0'
+        jl invalid
+        cmp dl, '9'
+        jg invalid
+        
+        sub dl, 30H
+        mov dh, 0
+        
+        push dx
+        mov bx, 10
+        mul bx
+        pop dx
+        add ax, dx
+        
+        inc si
+        dec cx
+        jmp str_to_num_loop
+        
+    invalid:
+        mov ax, 0
+        
+    str_to_num_done:
+        pop di
+        pop si
+        pop dx
+        pop cx
+        pop bx
+        ret
+    str_to_num endp 
+
+; ===================================
+print_book_entry proc
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    
+    print_string spaces
+    
+    mov ax, bx
+    inc ax
+    call print_num
+    print_string dot_space
+    
+    mov ax, bx
+    mov cx, name_width
+    mul cx
+    mov di, ax
+    print_string book_names[di]
+    
+    mov si, bx
+    add si, si
+    
+    print_string stock_label
+    mov ax, book_stock[si]
+    call print_num
+    
+    cmp book_stock[si], 0
+    jne print_book_entry_ok
+    print_string out_of_stock_label
+    
+    print_book_entry_ok:
+        pop di
+        pop si
+        pop dx
+        pop cx
+        pop bx
+        pop ax
+        ret
+    print_book_entry endp 
+
+; ===================================
+print_book_request_entry proc
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    call print_book_entry
+    
+    print_string pending_label
+    mov si, bx 
+    add si, si
+    mov ax, book_requests[si]
+    call print_num
+    gap
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+    print_book_request_entry endp
+    
+    
+; ===================================
+list_all_books proc
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    mov bx, 0
+    list_loop:
+        cmp bl, books_total
+        je list_all_book_done
+        
+        call print_book_entry
+        gap
+        
+        inc bx
+        jmp list_loop
+        
+    list_all_book_done:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+    
+    list_all_books endp
+
+; ===================================
+update_stock_menu proc
+    clear_screen
+    page_title update_stock_title
+    gap
+    
+    call list_all_books
+    
+    gap
+    print_string select_book_prompt
+    input_int
+    sub al, 30H
+    
+    cmp al, 0
+    JE update_stock_end
+    cmp al, books_total
+    jg if_invalid ;JA chilo
+
+    mov bl, al
+    dec bl
+    mov bh, 0
+    mov si, bx
+    add si, si
+    
+    gap
+    print_string enter_qty_add
+    input_long_string quantity_buffer
+    call str_to_num
+    
+    add book_stock[si], ax
+    
+    cmp book_requests[si], 0
+    je update_stock_no_pending
+    cmp book_stock[si], 0
+    JE update_stock_no_pending
+    
+    gap
+    print_string restock_notice_1
+    mov ax, book_requests[si]
+    call print_num
+    print_string restock_notice_2
+    gap
+    
+    add total_requests_handled, ax
+    mov book_requests[si], 0
+    
+    update_stock_no_pending:
+        
+        gap
+        print_string spaced_dashes
+        gap
+        print_string stock_updated_msg
+        gap
+        print_string spaced_dashes
+        gap
+        jmp update_stock_end
+        
+    if_invalid:
+        error_input
+    update_stock_end:
+        ret
+            
+    update_stock_menu endp            
+    
+; ===================================    
+request_out_of_stock_menu proc
+    clear_screen
+    page_title request_title
+    gap
+    
+    mov any_out_of_stock, 0
+    mov bx, 0
+    
+    req_list_loop:
+        cmp bl, books_total
+        je req_list_done
+        
+        mov si, bx
+        add si, si
+        cmp book_stock[si], 0
+        jne req_list_next
+        
+        mov any_out_of_stock, 1
+        call print_book_entry
+        gap
+        
+        req_list_next:
+        inc bx
+        jmp req_list_loop
+        
+    req_list_done:    
+        cmp any_out_of_stock, 0
+        jne req_has_books
+        
+        gap
+        print_string no_out_of_stock_msg
+        gap
+        jmp request_menu_end
+    
+    req_has_books:
+        gap
+        print_string select_book_prompt
+        input_int
+        sub al, 30H
+        
+        cmp al, 0
+        JE request_menu_end
+        cmp al, books_total
+        JG req_invalid
+        
+        mov bl, al
+        dec bl
+        mov bh, 0
+        mov si, bx
+        add si, si
+        
+        cmp book_stock[si], 0
+        JNE req_invalid
+        inc book_requests[si]
+        
+        gap
+        print_string spaced_dashes
+        gap
+        print_string request_confirm_msg
+        gap
+        print_string spaced_dashes
+        gap
+        JMP request_menu_end
+        
+        req_invalid:
+            error_input
+            
+        request_menu_end:
+            ret
+            
+    request_out_of_stock_menu endp            
+                
+
+; ===================================
+handle_requests_menu proc
+    clear_screen
+    page_title handle_request_title
+    gap
+    
+    mov any_pending, 0
+    mov bx, 0
+    
+    handle_list_loop:
+        cmp bl, books_total
+        JE handle_list_done
+        
+        mov si, bx
+        add si, si
+        cmp book_requests[si], 0
+        JE handle_list_next 
+        
+        mov any_pending, 1
+        call print_book_request_entry
+        
+        handle_list_next:
+            inc bx
+            jmp handle_list_loop
+        
+        handle_list_done:
+            cmp any_pending, 0
+            JNE handle_has_pending
+            
+            gap
+            print_string no_pending_msg
+            gap
+            jmp handle_menu_end
+            
+        handle_has_pending:
+            gap
+            print_string select_book_prompt
+            input_int
+            sub al, 30H
+            
+            cmp al, 0
+            JE handle_menu_end
+            cmp al, books_total
+            JG handle_inv
+            
+            mov bl, al
+            dec bl
+            mov bh, 0
+            mov si, bx
+            add si, si
+            
+            cmp book_requests[si], 0
+            JE handle_inv
+            
+            gap
+            print_string enter_qty_add
+            input_long_string quantity_buffer
+            call str_to_num
+            
+            add book_stock[si], ax
+            
+            cmp book_stock[si], 0
+            JE handle_still_out
+            
+            mov ax, book_requests[si]
+            add total_requests_handled, ax
+            mov book_requests[si], 0
+            
+            gap
+            print_string spaced_dashes
+            gap
+            print_string request_fulfilled_msg
+            gap
+            print_string spaced_dashes
+            gap
+            JMP handle_menu_end
+            
+        handle_still_out:
+            gap
+            print_string stock_updated_msg
+            gap
+            JMP handle_menu_end
+        handle_inv:
+            error_input            
+        handle_menu_end:
+            ret
+            
+    handle_requests_menu endp        
+                    
+; ===================================
+shop_analytics proc
+    clear_screen
+    page_title analytics_title
+    gap
+    
+    mov total_stock_qty, 0
+    mov out_of_stock_count, 0
+    mov pending_req_total, 0
+    mov most_req_count, 0
+    mov most_req_idx, 255
+    
+    mov bx, 0
+    analytics_loop:
+        cmp bl, books_total
+        JE analytics_loop_done
+        
+        mov si, bx
+        add si, si
+        
+        mov ax, book_stock[si]
+        add total_stock_qty, ax
+        
+        cmp book_stock[si], 0
+        JNE analytics_skip
+        inc out_of_stock_count
+        
+    analytics_skip:
+        mov ax, book_requests[si]
+        add pending_req_total, ax
+        
+        cmp ax, 0
+        JE analytics_skip_most
+        cmp ax, most_req_count
+        JBE analytics_skip_most ; JMP Below or equal for unsigned number
+        mov most_req_count, AX
+        mov most_req_idx, BL
+        
+    analytics_skip_most:
+        inc bx
+        jmp analytics_loop
+        
+    analytics_loop_done:
+    
+    print_string total_titles_label
+    mov ax, 0
+    mov al, books_total
+    call print_num  
+    gap
+    
+    print_string total_stock_label
+    mov ax, total_stock_qty
+    call print_num
+    gap
+    
+    print_string pending_total_label
+    mov ax, pending_req_total
+    call print_num
+    gap
+    
+    print_string handled_total_label
+    mov ax, total_requests_handled
+    call print_num
+    gap
+    
+    print_string most_requested_label
+    cmp most_req_idx, 255
+    JNE analytics_show_most
+    
+    print_string none_label
+    JMP analytics_most_done
+    
+    analytics_show_most:
+        mov bl, most_req_idx
+        mov bh, 0
+        mov ax, BX
+        mov cx, name_width
+        mul cx
+        mov di, ax
+        print_string book_names[di]
+        print_string requested_times_prefix
+        mov ax, most_req_count
+        call print_num
+        print_string requested_times_suffix
+        
+    analytics_most_done:
+    gap
+    
+    print_string spaced_dashes
+    ret                      
+    
+    shop_analytics endp
+
+
+; ===================================
+    
+    END MAIN
